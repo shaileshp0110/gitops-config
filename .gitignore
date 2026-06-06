@@ -1,0 +1,14 @@
+# Helm
+charts/*.tgz
+charts/*/*.tgz
+
+# OS
+.DS_Store
+
+# IDEs
+.idea/
+.vscode/
+
+# Temporary files
+*.tmp
+*.bak

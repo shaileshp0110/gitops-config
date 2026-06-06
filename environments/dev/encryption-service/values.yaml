@@ -1,0 +1,15 @@
+fullnameOverride: "encryption-service"
+replicaCount: 1
+image:
+  repository: encryption-service
+  tag: latest
+  pullPolicy: Never
+service:
+  port: 3000
+env:
+  - name: VAULT_ADDR
+    value: "http://vault.vault.svc.cluster.local:8200"
+  - name: VAULT_TOKEN
+    value: "root"
+  - name: KEY_NAME
+    value: "demo-key"

@@ -1,0 +1,32 @@
+nameOverride: "backend"
+replicaCount: 2
+image:
+  repository: your-docker-registry/backend
+  tag: "latest"
+service:
+  port: 3000
+env:
+  - name: DB_HOST
+    value: "postgres-postgresql.default.svc.cluster.local"
+  - name: DB_USER
+    value: "postgres"
+  - name: DB_PASSWORD
+    value: "password"
+  - name: DB_NAME
+    value: "postgres"
+ingress:
+  enabled: true
+  hosts:
+    - host: myapp.local
+      paths:
+        - path: /api
+          pathType: Prefix
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+serviceMonitor:
+  enabled: true
+  path: /metrics
+  port: http
