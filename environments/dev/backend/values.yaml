@@ -1,8 +1,9 @@
 nameOverride: "backend"
 replicaCount: 2
 image:
-  repository: your-docker-registry/backend
+  repository: backend
   tag: "latest"
+  pullPolicy: Never
 service:
   port: 3000
 env:

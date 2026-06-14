@@ -1,3 +1,5 @@
+# Deprecated for local minikube setup — use setup-minikube.sh which applies apps individually.
+# The app-of-apps pattern reverts local frontend/backend image overrides by syncing from GitHub.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -11,6 +13,7 @@ spec:
     targetRevision: HEAD
     directory:
       recurse: true
+      exclude: "{frontend/**,backend/**}"
   destination:
     server: https://kubernetes.default.svc
     namespace: default
