@@ -125,9 +125,8 @@ metadata:
   namespace: default
 spec:
   selector:
-    matchExpressions:
-      - key: security.istio.io/tlsMode
-        operator: Exists
+    matchLabels:
+      security.istio.io/tlsMode: istio
   action: ALLOW
   rules:
     - from:
