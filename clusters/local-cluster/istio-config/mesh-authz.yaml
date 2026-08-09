@@ -6,7 +6,7 @@
 # Non-meshed nginx ingress has no peer identity — local PERMISSIVE + namespace rules apply.
 
 # Deny all inbound to meshed workloads unless explicitly allowed below.
-apiVersion: security.istio.io/v1beta1
+apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
   name: deny-all
@@ -14,7 +14,7 @@ metadata:
 spec: {}
 ---
 # Frontend HTTP from the nginx ingress controller (ingress-nginx namespace).
-apiVersion: security.istio.io/v1beta1
+apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
   name: allow-ingress-to-frontend
@@ -33,7 +33,7 @@ spec:
             ports: ["80"]
 ---
 # Backend API from frontend (meshed, mTLS identity) and from nginx ingress.
-apiVersion: security.istio.io/v1beta1
+apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
   name: allow-to-backend
@@ -59,7 +59,7 @@ spec:
             ports: ["3000"]
 ---
 # backend -> encryption-service (Node). Requires dedicated service account on backend.
-apiVersion: security.istio.io/v1beta1
+apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
   name: allow-to-encryption-service
@@ -79,7 +79,7 @@ spec:
             ports: ["3000"]
 ---
 # backend -> encryption-service-java
-apiVersion: security.istio.io/v1beta1
+apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
   name: allow-to-encryption-service-java
@@ -99,7 +99,7 @@ spec:
             ports: ["8080"]
 ---
 # Allow Prometheus (monitoring ns) to scrape istiod only — NOT the ingress gateway.
-apiVersion: security.istio.io/v1beta1
+apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
   name: allow-prometheus-scrape-istiod
@@ -118,7 +118,7 @@ spec:
             ports: ["15014", "8080"]
 ---
 # Allow Prometheus to scrape meshed app sidecars (Envoy stats on 15090).
-apiVersion: security.istio.io/v1beta1
+apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
   name: allow-prometheus-scrape-sidecars
