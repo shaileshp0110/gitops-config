@@ -1,0 +1,182 @@
+# Istio service mesh — managed via ArgoCD with explicit sync-wave ordering.
+#
+# Wave -10  istio-base        : CRDs (must exist before anything else)
+# Wave  -9  istiod            : control plane
+# Wave  -8  istio-ingressgateway : data-plane edge proxy
+# Wave  -7  kiali             : mesh observability UI (reads istiod)
+# Wave  -6  istio-config      : mTLS, authorization, Prometheus monitors
+#
+# The sidecar proxies for application pods are injected by the istio-sidecar-injector
+# (part of istiod) once namespaces carry the label istio-injection=enabled. That label
+# is applied by infrastructure/setup-istio.sh after the control plane is healthy.
+
+# --- CRDs ---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio-base
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  project: default
+  source:
+    chart: base
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    targetRevision: 1.27.1
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  # istiod patches caBundle + failurePolicy=Fail after install; ignore so Argo stays Synced.
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - .webhooks[]?.clientConfig.caBundle
+        - .webhooks[]?.failurePolicy
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+---
+# --- Control plane ---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istiod
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-9"
+spec:
+  project: default
+  source:
+    chart: istiod
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    targetRevision: 1.27.1
+    helm:
+      values: |
+        autoscaleEnabled: false
+        pilot:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  # Runtime/API drift: webhook caBundle+failurePolicy; Deployment env defaults (empty PLATFORM,
+  # resourceFieldRef.divisor, fieldRef.apiVersion) that Kubernetes normalizes after apply.
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - .webhooks[]?.clientConfig.caBundle
+        - .webhooks[]?.failurePolicy
+    - group: apps
+      kind: Deployment
+      name: istiod
+      jqPathExpressions:
+        - .spec.template.spec.containers[].env[].valueFrom.resourceFieldRef.divisor
+        - .spec.template.spec.containers[].env[].valueFrom.fieldRef.apiVersion
+        - .spec.template.spec.containers[].env[] | select(.name == "PLATFORM").value
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+---
+# --- Ingress gateway (edge proxy) ---
+# North-south edge proxy. Chart version matches istiod (1.27.1) — do not skew data/control plane.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio-ingressgateway
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-8"
+spec:
+  project: default
+  source:
+    chart: gateway
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    targetRevision: 1.27.1
+    helm:
+      values: |
+        autoscaling:
+          enabled: false
+        replicaCount: 1
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+# --- Mesh observability UI ---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kiali
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-7"
+spec:
+  project: default
+  source:
+    chart: kiali-server
+    repoURL: https://kiali.org/helm-charts
+    targetRevision: 1.86.0
+    helm:
+      values: |
+        auth:
+          strategy: anonymous
+        external_services:
+          prometheus:
+            url: "http://kube-prometheus-stack-prometheus.monitoring.svc:9090"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+# --- Mesh runtime config (mTLS + authz + metrics) ---
+# GitOps-managed. Local nginx PERMISSIVE overrides: istio-config/mesh-local-ingress.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio-config
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-6"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/shaileshp0110/gitops-config.git
+    path: clusters/local-cluster/istio-config
+    targetRevision: HEAD
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

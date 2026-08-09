@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: frontend-dev
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/shaileshp0110/gitops-config.git
+    path: charts/microservice
+    targetRevision: HEAD
+    helm:
+      values: |
+        nameOverride: "frontend"
+        replicaCount: 2
+        image:
+          repository: frontend
+          tag: latest
+          pullPolicy: Never
+        service:
+          port: 80
+        ingress:
+          enabled: true
+          hosts:
+            - host: myapp.local
+              paths:
+                - path: /
+                  pathType: Prefix
+        autoscaling:
+          enabled: false
+          minReplicas: 2
+          maxReplicas: 4
+          targetCPUUtilizationPercentage: 80
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

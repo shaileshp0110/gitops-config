@@ -1,0 +1,64 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: backend-dev
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/shaileshp0110/gitops-config.git
+    path: charts/microservice
+    targetRevision: HEAD
+    helm:
+      values: |
+        nameOverride: "backend"
+        replicaCount: 2
+        image:
+          repository: backend
+          tag: latest
+          pullPolicy: Never
+        service:
+          port: 3000
+        livenessProbe:
+          enabled: true
+          path: /health
+        readinessProbe:
+          enabled: true
+          path: /health
+        env:
+          - name: DB_HOST
+            value: "postgres-postgresql.default.svc.cluster.local"
+          - name: DB_USER
+            value: "postgres"
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: postgres-postgresql
+                key: postgres-password
+          - name: DB_NAME
+            value: "postgres"
+        ingress:
+          enabled: true
+          hosts:
+            - host: myapp.local
+              paths:
+                - path: /api
+                  pathType: Prefix
+        autoscaling:
+          enabled: false
+          minReplicas: 2
+          maxReplicas: 5
+          targetCPUUtilizationPercentage: 70
+        serviceMonitor:
+          enabled: true
+          path: /metrics
+          port: http
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

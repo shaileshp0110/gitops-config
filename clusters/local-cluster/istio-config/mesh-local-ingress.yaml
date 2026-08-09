@@ -1,0 +1,34 @@
+# LOCAL CLUSTER ONLY — do not promote to production.
+#
+# The minikube nginx Ingress addon has no sidecar, so it reaches app pods over plaintext.
+# Port-level PERMISSIVE on the app HTTP ports keeps the demo reachable while east-west
+# traffic stays STRICT. In production, remove this file and use the Istio ingress gateway.
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: frontend-http-permissive-for-nginx-ingress
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: frontend-dev
+  mtls:
+    mode: STRICT
+  portLevelMtls:
+    "80":
+      mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: backend-http-permissive-for-nginx-ingress
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: backend-dev
+  mtls:
+    mode: STRICT
+  portLevelMtls:
+    "3000":
+      mode: PERMISSIVE

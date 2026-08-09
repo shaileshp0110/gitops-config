@@ -6,13 +6,22 @@ image:
   pullPolicy: Never
 service:
   port: 3000
+livenessProbe:
+  enabled: true
+  path: /health
+readinessProbe:
+  enabled: true
+  path: /health
 env:
   - name: DB_HOST
     value: "postgres-postgresql.default.svc.cluster.local"
   - name: DB_USER
     value: "postgres"
   - name: DB_PASSWORD
-    value: "password"
+    valueFrom:
+      secretKeyRef:
+        name: postgres-postgresql
+        key: postgres-password
   - name: DB_NAME
     value: "postgres"
 ingress:

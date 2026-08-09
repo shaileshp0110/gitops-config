@@ -6,6 +6,12 @@ image:
   pullPolicy: Never
 service:
   port: 8080
+livenessProbe:
+  enabled: true
+  path: /status
+readinessProbe:
+  enabled: true
+  path: /status
 env:
   - name: VAULT_ADDR
     value: "http://vault.vault.svc.cluster.local:8200"

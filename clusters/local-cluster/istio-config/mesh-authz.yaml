@@ -1,0 +1,138 @@
+# Authorization model (default namespace):
+#   1. deny-all — any meshed workload without an explicit ALLOW is rejected.
+#   2. ALLOW policies — pin sources (namespace and/or SPIFFE principal) per path.
+#
+# Vault and postgres are NOT meshed; mesh authz does not govern their plaintext ports.
+# Non-meshed nginx ingress has no peer identity — local PERMISSIVE + namespace rules apply.
+
+# Deny all inbound to meshed workloads unless explicitly allowed below.
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-all
+  namespace: default
+spec: {}
+---
+# Frontend HTTP from the nginx ingress controller (ingress-nginx namespace).
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-ingress-to-frontend
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: frontend-dev
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            namespaces: ["ingress-nginx"]
+      to:
+        - operation:
+            ports: ["80"]
+---
+# Backend API from frontend (meshed, mTLS identity) and from nginx ingress.
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-to-backend
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: backend-dev
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/default/sa/frontend-dev
+      to:
+        - operation:
+            ports: ["3000"]
+    - from:
+        - source:
+            namespaces: ["ingress-nginx"]
+      to:
+        - operation:
+            ports: ["3000"]
+---
+# backend -> encryption-service (Node). Requires dedicated service account on backend.
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-to-encryption-service
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: encryption-service-dev
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/default/sa/backend-dev
+      to:
+        - operation:
+            ports: ["3000"]
+---
+# backend -> encryption-service-java
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-to-encryption-service-java
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: encryption-service-java-dev
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/default/sa/backend-dev
+      to:
+        - operation:
+            ports: ["8080"]
+---
+# Allow Prometheus (monitoring ns) to scrape istiod only — NOT the ingress gateway.
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-prometheus-scrape-istiod
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      app: istiod
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            namespaces: ["monitoring"]
+      to:
+        - operation:
+            ports: ["15014", "8080"]
+---
+# Allow Prometheus to scrape meshed app sidecars (Envoy stats on 15090).
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-prometheus-scrape-sidecars
+  namespace: default
+spec:
+  selector:
+    matchExpressions:
+      - key: security.istio.io/tlsMode
+        operator: Exists
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            namespaces: ["monitoring"]
+      to:
+        - operation:
+            ports: ["15090", "15020"]
