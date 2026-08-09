@@ -8,12 +8,11 @@ service:
   port: 3000
 podSecurityContext: {}
 securityContext: {}
+# /status calls Vault and returns 500 when unreachable — not a liveness check.
 livenessProbe:
-  enabled: true
-  path: /status
+  enabled: false
 readinessProbe:
-  enabled: true
-  path: /status
+  enabled: false
 env:
   - name: VAULT_ADDR
     value: "http://vault.vault.svc.cluster.local:8200"
