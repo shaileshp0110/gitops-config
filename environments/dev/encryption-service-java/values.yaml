@@ -6,6 +6,8 @@ image:
   pullPolicy: Never
 service:
   port: 8080
+podSecurityContext: {}
+securityContext: {}
 livenessProbe:
   enabled: true
   path: /status

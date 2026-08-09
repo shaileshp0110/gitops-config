@@ -14,18 +14,10 @@ serviceAccount:
 
 podAnnotations: {}
 
-podSecurityContext:
-  runAsNonRoot: true
-  seccompProfile:
-    type: RuntimeDefault
+# Hardening is opt-in — local demo images run as root. Enable for prod images.
+podSecurityContext: {}
 
-securityContext:
-  allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: false
-  runAsNonRoot: true
-  capabilities:
-    drop:
-      - ALL
+securityContext: {}
 
 livenessProbe:
   enabled: true

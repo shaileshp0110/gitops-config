@@ -21,6 +21,8 @@ spec:
           pullPolicy: Never
         service:
           port: 80
+        podSecurityContext: {}
+        securityContext: {}
         ingress:
           enabled: true
           hosts:

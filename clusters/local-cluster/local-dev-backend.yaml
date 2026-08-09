@@ -21,6 +21,8 @@ spec:
           pullPolicy: Never
         service:
           port: 3000
+        podSecurityContext: {}
+        securityContext: {}
         livenessProbe:
           enabled: true
           path: /health
