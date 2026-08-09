@@ -18,5 +18,8 @@ env:
     value: "http://vault.vault.svc.cluster.local:8200"
   - name: VAULT_TOKEN
     value: "root"
+  # Fallback key used when a request does not name one (e.g. GET /status). Must match a key
+  # that exists in Vault's transit engine — the demo scripts pass explicit key names, so a
+  # stale default here surfaces only as a 500 on /status.
   - name: KEY_NAME
-    value: "demo-key"
+    value: "demo-key-symmetric"
