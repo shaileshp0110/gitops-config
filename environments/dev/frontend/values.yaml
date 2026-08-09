@@ -6,6 +6,9 @@ image:
   pullPolicy: Never
 service:
   port: 80
+# The image is nginx-unprivileged (UID 101), which cannot bind :80 — it listens on 8080
+# and the Service maps 80 -> 8080.
+containerPort: 8080
 ingress:
   enabled: true
   hosts:

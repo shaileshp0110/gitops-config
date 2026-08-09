@@ -14,22 +14,45 @@ serviceAccount:
 
 podAnnotations: {}
 
-# Hardening is opt-in — local demo images run as root. Enable for prod images.
+# Hardening is opt-in. The app images now declare numeric non-root UIDs (frontend 101,
+# node services 1000, java 1001), so a consuming environment can enable:
+#   podSecurityContext: {runAsNonRoot: true, runAsUser: <uid>, seccompProfile: {type: RuntimeDefault}}
+#   securityContext:    {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+# runAsUser must be numeric — kubelet cannot verify a named image user against
+# runAsNonRoot and fails the pod with CreateContainerConfigError.
 podSecurityContext: {}
 
 securityContext: {}
+
+# Container listen port. Defaults to service.port; override when the container binds a
+# different port than the Service exposes (unprivileged nginx listens 8080 behind :80).
+containerPort: ""
+
+# Probes are per-service: the chart cannot know a health path, and the default "/" will
+# crash-loop anything that does not serve it. Prefer a startupProbe for slow starters
+# (JVM) so liveness does not kill the pod during boot.
+startupProbe:
+  enabled: false
+  path: /
+  periodSeconds: 5
+  failureThreshold: 30
+  timeoutSeconds: 3
 
 livenessProbe:
   enabled: true
   path: /
   initialDelaySeconds: 15
   periodSeconds: 10
+  failureThreshold: 3
+  timeoutSeconds: 3
 
 readinessProbe:
   enabled: true
   path: /
   initialDelaySeconds: 5
   periodSeconds: 5
+  failureThreshold: 3
+  timeoutSeconds: 3
 
 env: []
   # - name: DB_HOST

@@ -1,8 +1,16 @@
 # LOCAL CLUSTER ONLY — do not promote to production.
 #
 # The minikube nginx Ingress addon has no sidecar, so it reaches app pods over plaintext.
-# Port-level PERMISSIVE on the app HTTP ports keeps the demo reachable while east-west
-# traffic stays STRICT. In production, remove this file and use the Istio ingress gateway.
+# Two things are needed to let it through, and both are local-only workarounds:
+#
+#   1. PeerAuthentication: port-level PERMISSIVE on the app ports, so STRICT mTLS does not
+#      reject the plaintext connection. Keys are CONTAINER ports, not Service ports.
+#   2. AuthorizationPolicy: an allow rule that deny-all does not swallow. Because the
+#      client has no peer certificate, it has no namespace or principal to match on —
+#      the rule must match on source.ipBlocks (pod CIDR).
+#
+# In production, remove this file and front the mesh with the Istio ingress gateway, which
+# is meshed and therefore carries an identity that mesh-authz.yaml can pin.
 apiVersion: security.istio.io/v1
 kind: PeerAuthentication
 metadata:
@@ -15,7 +23,8 @@ spec:
   mtls:
     mode: STRICT
   portLevelMtls:
-    "80":
+    # Container port: unprivileged nginx listens on 8080 behind Service port 80.
+    "8080":
       mode: PERMISSIVE
 ---
 apiVersion: security.istio.io/v1
@@ -32,3 +41,42 @@ spec:
   portLevelMtls:
     "3000":
       mode: PERMISSIVE
+---
+# Authorization counterpart to the PERMISSIVE ports above. source.ipBlocks matches the
+# connection's source IP, which is the only thing available for a peer with no certificate.
+# Scoped to the pod CIDR, so this does not admit off-cluster traffic.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: local-allow-nginx-to-frontend
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: frontend-dev
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            ipBlocks: ["10.244.0.0/16"]
+      to:
+        - operation:
+            ports: ["8080"]
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: local-allow-nginx-to-backend
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: backend-dev
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            ipBlocks: ["10.244.0.0/16"]
+      to:
+        - operation:
+            ports: ["3000"]

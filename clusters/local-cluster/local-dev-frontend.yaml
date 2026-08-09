@@ -21,6 +21,8 @@ spec:
           pullPolicy: Never
         service:
           port: 80
+        # nginx-unprivileged (UID 101) cannot bind :80 — listens 8080 behind Service :80.
+        containerPort: 8080
         podSecurityContext: {}
         securityContext: {}
         ingress:

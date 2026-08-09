@@ -136,7 +136,9 @@ spec:
   source:
     chart: kiali-server
     repoURL: https://kiali.org/helm-charts
-    targetRevision: 1.86.0
+    # Kiali tracks Istio releases; 1.86 predates Istio 1.27 and reports it as unsupported.
+    # Bump this alongside any istiod version change.
+    targetRevision: 2.30.0
     helm:
       values: |
         auth:

@@ -1,4 +1,9 @@
-{{- if and .Values.pdb.enabled (gt (int .Values.replicaCount) 1) (not .Values.autoscaling.enabled) }}
+{{/*
+A PDB is wanted whether replicas are fixed or autoscaled — under an HPA the floor is
+minReplicas, so gate on that instead of skipping the PDB entirely.
+*/}}
+{{- $replicas := ternary (int .Values.autoscaling.minReplicas) (int .Values.replicaCount) .Values.autoscaling.enabled -}}
+{{- if and .Values.pdb.enabled (gt $replicas 1) }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
