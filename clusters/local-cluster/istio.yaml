@@ -158,7 +158,7 @@ spec:
       - ServerSideApply=true
 ---
 # --- Mesh runtime config (mTLS + authz + metrics) ---
-# GitOps-managed. Local nginx PERMISSIVE overrides: istio-config/mesh-local-ingress.yaml
+# GitOps-managed. myapp.local Gateway + VirtualService: istio-config/mesh-ingress.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

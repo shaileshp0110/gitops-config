@@ -7,3 +7,22 @@ metadata:
 spec:
   mtls:
     mode: STRICT
+---
+# Backend app port accepts plaintext as well as mTLS, only so the non-meshed Prometheus
+# (monitoring namespace) can scrape /metrics. mesh-authz.yaml limits plaintext peers to
+# the /metrics path (allow-prometheus-scrape-backend-metrics); everything else on this
+# port still needs a mesh identity. Key is the CONTAINER port.
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: backend-metrics-permissive-for-prometheus
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: backend-dev
+  mtls:
+    mode: STRICT
+  portLevelMtls:
+    "3000":
+      mode: PERMISSIVE

@@ -25,8 +25,9 @@ spec:
         containerPort: 8080
         podSecurityContext: {}
         securityContext: {}
+        # Routed by the Istio ingress gateway (istio-config/mesh-ingress.yaml).
         ingress:
-          enabled: true
+          enabled: false
           hosts:
             - host: myapp.local
               paths:

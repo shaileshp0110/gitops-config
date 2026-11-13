@@ -5,9 +5,9 @@
 # Vault and postgres are NOT meshed; mesh authz does not govern their plaintext ports.
 #
 # IMPORTANT: source.namespaces and source.principals are read from the peer's mTLS
-# certificate. A non-meshed client (the nginx addon, non-meshed Prometheus) has no peer
-# identity, so those predicates never match its plaintext connections. Rules covering
-# non-meshed sources must use source.ipBlocks instead — see mesh-local-ingress.yaml.
+# certificate. A non-meshed client (e.g. non-meshed Prometheus) has no peer identity, so
+# those predicates never match its plaintext connections. Rules covering non-meshed
+# sources must use source.ipBlocks instead.
 
 # Deny all inbound to meshed workloads unless explicitly allowed below.
 apiVersion: security.istio.io/v1
@@ -17,12 +17,29 @@ metadata:
   namespace: default
 spec: {}
 ---
-# Backend API from the frontend workload identity.
-# Note: the frontend is a browser SPA, so in practice /api is reached through the edge
-# proxy rather than pod-to-pod. In production, front the mesh with the Istio gateway and
-# add its identity here:
-#   - cluster.local/ns/istio-system/sa/istio-ingressgateway
-# Locally the nginx addon is covered by mesh-local-ingress.yaml.
+# Frontend from the Istio ingress gateway (myapp.local/ — see mesh-ingress.yaml).
+# Port is the CONTAINER port: unprivileged nginx listens on 8080 behind Service port 80.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-to-frontend
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: frontend-dev
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/istio-system/sa/istio-ingressgateway
+      to:
+        - operation:
+            ports: ["8080"]
+---
+# Backend API from the Istio ingress gateway (myapp.local/api — the frontend is a browser
+# SPA, so /api arrives through the edge proxy) and from the frontend workload identity.
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
@@ -37,6 +54,7 @@ spec:
     - from:
         - source:
             principals:
+              - cluster.local/ns/istio-system/sa/istio-ingressgateway
               - cluster.local/ns/default/sa/frontend-dev
       to:
         - operation:

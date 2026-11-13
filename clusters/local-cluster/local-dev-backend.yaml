@@ -41,8 +41,9 @@ spec:
                 key: postgres-password
           - name: DB_NAME
             value: "postgres"
+        # Routed by the Istio ingress gateway (istio-config/mesh-ingress.yaml).
         ingress:
-          enabled: true
+          enabled: false
           hosts:
             - host: myapp.local
               paths:

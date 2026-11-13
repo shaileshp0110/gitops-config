@@ -1,12 +1,11 @@
 # Istio mesh runtime config — mTLS, authorization, Prometheus monitors.
 # Synced by Argo CD Application istio-config (sync-wave -6, after istiod).
 #
-# mesh-local-ingress.yaml is LOCAL ONLY (nginx addon PERMISSIVE workaround).
-# For production, drop that resource and front the mesh with the Istio gateway.
+# mesh-ingress.yaml routes myapp.local through the Istio ingress gateway.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - mesh-mtls.yaml
   - mesh-authz.yaml
-  - mesh-local-ingress.yaml
+  - mesh-ingress.yaml
   - mesh-metrics.yaml
