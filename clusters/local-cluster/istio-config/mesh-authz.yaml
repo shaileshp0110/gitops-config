@@ -100,6 +100,27 @@ spec:
         - operation:
             ports: ["8080"]
 ---
+# CronJob trigger -> logger-service. The trigger pods run under their own service account
+# (charts/microservice/templates/cronjob.yaml).
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-to-logger-service
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: logger-service-dev
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/default/sa/logger-service-trigger
+      to:
+        - operation:
+            ports: ["8080"]
+---
 # Allow Prometheus (monitoring ns) to scrape istiod only — NOT the ingress gateway.
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy

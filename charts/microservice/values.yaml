@@ -90,6 +90,14 @@ autoscaling:
   maxReplicas: 10
   targetCPUUtilizationPercentage: 80
 
+# Optional scheduled trigger: a CronJob that POSTs `body` to this Service at `path`.
+cronjob:
+  enabled: false
+  schedule: "* * * * *"
+  image: curlimages/curl:8.11.1
+  path: /
+  body: "{}"
+
 serviceMonitor:
   enabled: false
   path: /metrics

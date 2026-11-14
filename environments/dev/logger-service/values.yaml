@@ -1,0 +1,20 @@
+fullnameOverride: "logger-service"
+replicaCount: 1
+image:
+  repository: logger-service
+  tag: latest
+  pullPolicy: Never
+service:
+  port: 8080
+podSecurityContext: {}
+securityContext: {}
+livenessProbe:
+  path: /health
+readinessProbe:
+  path: /health
+# Kubernetes CronJob POSTs a message every minute; the service logs it.
+cronjob:
+  enabled: true
+  schedule: "* * * * *"
+  path: /log
+  body: '{"message":"scheduled trigger from kubernetes cronjob"}'

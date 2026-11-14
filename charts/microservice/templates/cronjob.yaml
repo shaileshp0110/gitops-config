@@ -1,0 +1,53 @@
+{{- if .Values.cronjob.enabled -}}
+{{- $name := printf "%s-trigger" (include "microservice.fullname" .) -}}
+# Scheduled trigger: POSTs to this release's Service. Runs under its own ServiceAccount so
+# mesh authorization can pin the caller identity.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.cronjob.schedule | quote }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          # Must NOT carry the chart's selector labels, or the Service and PDB would
+          # select the trigger pods.
+          labels:
+            app.kubernetes.io/name: {{ $name }}
+        spec:
+          serviceAccountName: {{ $name }}
+          restartPolicy: Never
+          containers:
+            - name: trigger
+              image: {{ .Values.cronjob.image | quote }}
+              env:
+                - name: TARGET_URL
+                  value: "http://{{ include "microservice.fullname" . }}:{{ .Values.service.port }}{{ .Values.cronjob.path }}"
+                - name: BODY
+                  value: {{ .Values.cronjob.body | quote }}
+              command:
+                - /bin/sh
+                - -c
+                # Retries cover an Istio sidecar that is not ready yet. The quitquitquit
+                # call stops a classic (non-native) sidecar so the Job can complete; it is
+                # a no-op failure when the pod has no sidecar.
+                - |
+                  curl -fsS --retry 10 --retry-delay 1 --retry-all-errors \
+                    -X POST -H 'Content-Type: application/json' -d "$BODY" "$TARGET_URL"
+                  rc=$?
+                  curl -s -o /dev/null -X POST http://localhost:15020/quitquitquit || true
+                  exit $rc
+{{- end }}
