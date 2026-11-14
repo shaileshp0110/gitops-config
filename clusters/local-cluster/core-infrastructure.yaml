@@ -129,6 +129,13 @@ spec:
             tag: 2.9.3
         promtail:
           enabled: true
+          # minikube runs the Docker runtime, whose log files are JSON-wrapped
+          # ({"log": "...", "stream": "..."}). The chart default parses the containerd (cri)
+          # format and would leave every line wrapped.
+          config:
+            snippets:
+              pipelineStages:
+                - docker: {}
         grafana:
           enabled: false
         test_pod:
