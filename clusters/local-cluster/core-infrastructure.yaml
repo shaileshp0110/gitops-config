@@ -49,6 +49,44 @@ spec:
       values: |
         grafana:
           adminPassword: "admin"
+          # Read-only access without login (local demo). Kiali uses this to call the
+          # Grafana API, so it needs no Grafana credentials and keeps working when the
+          # admin password is changed. Log in as admin only to edit.
+          grafana.ini:
+            auth.anonymous:
+              enabled: true
+              org_role: Viewer
+          # Istio dashboards, downloaded from grafana.com when the Grafana pod starts.
+          dashboardProviders:
+            dashboardproviders.yaml:
+              apiVersion: 1
+              providers:
+                - name: istio
+                  orgId: 1
+                  folder: Istio
+                  type: file
+                  disableDeletion: false
+                  editable: true
+                  options:
+                    path: /var/lib/grafana/dashboards/istio
+          dashboards:
+            istio:
+              istio-mesh:
+                gnetId: 7639
+                revision: 270
+                datasource: Prometheus
+              istio-service:
+                gnetId: 7636
+                revision: 270
+                datasource: Prometheus
+              istio-workload:
+                gnetId: 7630
+                revision: 270
+                datasource: Prometheus
+              istio-control-plane:
+                gnetId: 7645
+                revision: 270
+                datasource: Prometheus
         prometheus:
           prometheusSpec:
             serviceMonitorSelectorNilUsesHelmValues: false
@@ -62,3 +100,45 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+---
+# Logs: Loki (single binary, in-memory/ephemeral storage) + Promtail (DaemonSet that tails
+# every pod's log files on the node). The chart also creates a ConfigMap labelled
+# grafana_datasource, which the kube-prometheus-stack Grafana sidecar loads as the
+# "Loki" datasource.
+# loki-stack is deprecated upstream but is the smallest single-chart install; fine for a
+# local demo, replace with the loki + alloy charts for anything long-lived.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    chart: loki-stack
+    repoURL: https://grafana.github.io/helm-charts
+    targetRevision: 2.10.3
+    helm:
+      values: |
+        loki:
+          # Prometheus stays the default datasource; two defaults crash Grafana provisioning.
+          isDefault: false
+          image:
+            tag: 2.9.3
+        promtail:
+          enabled: true
+        grafana:
+          enabled: false
+        test_pod:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

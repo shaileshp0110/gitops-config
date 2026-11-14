@@ -146,6 +146,17 @@ spec:
         external_services:
           prometheus:
             url: "http://kube-prometheus-stack-prometheus.monitoring.svc:9090"
+          # Without this Kiali probes its default http://grafana.istio-system:3000, which
+          # does not exist here, and reports Grafana as unreachable.
+          grafana:
+            enabled: true
+            internal_url: "http://kube-prometheus-stack-grafana.monitoring.svc:80"
+            # Used for the "View in Grafana" links; matches the README port-forward.
+            external_url: "http://localhost:3000"
+            # No credentials: Grafana allows anonymous Viewer access
+            # (core-infrastructure.yaml, grafana.ini auth.anonymous).
+            auth:
+              type: none
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
